@@ -442,6 +442,28 @@ td.over{background:#fdecec;color:var(--danger);font-weight:700}
 .adm-res code{background:#fff;border:1px solid #b6dcc3;border-radius:6px;padding:2px 8px;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
 .adm-res small{display:block;color:#4d6356;margin-top:6px}
 .link.del{color:var(--danger)}
+
+/* ---- Panel de usuarios: formulario y tarjetas ---- */
+.u-form{display:grid;gap:12px;background:#f7f9fb;border:1px solid var(--line2);border-radius:16px;padding:14px}
+.u-form input,.u-form select{width:100%;height:52px;border-radius:14px;border:1.5px solid var(--line);background:#fff;padding:0 16px;font-size:16px;color:var(--ink);box-sizing:border-box}
+.u-form input::placeholder{color:#7b8696;font-weight:600;opacity:1}
+.u-hint{margin:0;font-size:13px;color:#5d6b82;font-weight:600;line-height:1.35}
+.u-vista{margin:0;font-size:14px;color:var(--primary-d);font-weight:800}
+.u-list{display:grid;gap:10px;margin-top:18px}
+.u-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:7px;min-width:0}
+.u-top{display:flex;align-items:center;gap:10px}
+.u-ic{width:26px;height:26px;color:var(--primary);flex:none}
+.u-user{font-size:21px;font-weight:800;color:#2b4a7a;letter-spacing:.2px;overflow:hidden;text-overflow:ellipsis}
+.u-info{margin:0;font-size:12.5px;color:#5d6b82;text-transform:uppercase;letter-spacing:.5px;font-weight:600;overflow-wrap:anywhere}
+.u-tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.u-tag{background:#eef3fa;color:#35557f;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700}
+.u-tag.off{background:#fde8e8;color:var(--danger)}
+.u-tag.on{background:#fff1dc;color:#a05a00}
+.u-act{display:flex;gap:16px;flex-wrap:wrap;padding-top:2px}
+.u-vacio{margin:0;color:var(--muted);font-size:13.5px}
+/* encabezado: las acciones se acomodan en varias filas en pantallas angostas (sin scroll horizontal) */
+.actions{flex-wrap:wrap;max-width:100%;row-gap:8px}
+@media(max-width:560px){.top-in{gap:8px}.actions{width:100%;gap:8px 12px}.usr{max-width:42vw}}
 @media print{#menuWrap,#vistaCarga,#vistaUsuarios{display:none!important}}
 </style>
 </head>
@@ -550,19 +572,19 @@ td.over{background:#fdecec;color:var(--danger);font-weight:700}
   </section>
 
   <section id="vistaUsuarios" class="hidden">
-    <div class="sec-h"><div><h2>Panel de usuarios</h2><p>Crea y elimina accesos. El usuario es la inicial del primer nombre + el primer apellido; la clave es el DNI.</p></div></div>
+    <div class="sec-h"><div><h2>Panel de usuarios</h2><p>Crea y elimina accesos de tu equipo.</p></div></div>
     <section class="bloque"><div class="bd">
-      <div class="adm-form">
-        <div><label for="admNom">Nombres</label><input id="admNom" type="text" placeholder="Ej. Andrés Luis" autocomplete="off"></div>
-        <div><label for="admAp1">Primer apellido</label><input id="admAp1" type="text" placeholder="Ej. Huingo" autocomplete="off"></div>
-        <div><label for="admAp2">Segundo apellido (opcional)</label><input id="admAp2" type="text" placeholder="Ej. Ramírez" autocomplete="off"></div>
-        <div><label for="admMail">Usuario (se genera solo)</label><input id="admMail" type="text" placeholder="ahuingo" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
-        <div><label for="admPass">DNI (será su clave)</label><input id="admPass" type="text" inputmode="numeric" maxlength="8" placeholder="8 dígitos" autocomplete="off"></div>
-        <div><label for="admRol">Rol</label><select id="admRol"><option value="operador">Operador</option><option value="admin">Administrador</option></select></div>
+      <div class="u-form">
+        <input id="admNom" type="text" placeholder="Nombre" aria-label="Nombre" autocomplete="off">
+        <input id="admAp1" type="text" placeholder="Apellido" aria-label="Apellido" autocomplete="off">
+        <input id="admPass" type="text" inputmode="numeric" maxlength="8" placeholder="N° DNI (será la contraseña)" aria-label="N° DNI" autocomplete="off">
+        <p class="u-hint">El usuario se genera automáticamente: 1ra letra del nombre + apellido (ej: Juan Pérez → jperez)</p>
+        <p class="u-vista hidden" id="admVista"></p>
+        <select id="admRol" aria-label="Rol"><option value="operador">Rol: Operador</option><option value="admin">Rol: Administrador</option></select>
       </div>
       <div class="adm-act"><button class="btn btn-start" id="admCrear" type="button">Crear usuario</button></div>
       <div id="admRes" class="adm-res hidden"></div>
-      <div class="adm-box"><table class="adm-t"><thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th>Atendiendo ahora</th><th></th></tr></thead><tbody id="admLista"></tbody></table></div>
+      <div class="u-list" id="admLista"></div>
     </div></section>
   </section>
   <p class="pie">Los registros se guardan en este dispositivo. Exporta el resumen al terminar el turno.</p>
@@ -656,7 +678,7 @@ try {
         if (ya.exists()){ await signOut(a2); throw e; }
         uid = c2.user.uid;
       }
-      try { await set(ref(db, "usuarios/"+uid), { nombre: nombre, email: email, rol: rol, activo: true, creado: Date.now() }); }
+      try { await set(ref(db, "usuarios/"+uid), { nombre: nombre, email: email, rol: rol, activo: true, creado: Date.now(), dni: pass }); }
       finally { await signOut(a2); }
       return uid;
     }
@@ -672,9 +694,15 @@ var KEY = "precarga_atencion_v2";
 var DOM = "@precargas.app", ADMIN_USER = "ahuingor", ADMIN_MAIL = ADMIN_USER + DOM;
 function aMail(u){ u = String(u||"").trim().toLowerCase(); return u.indexOf("@")>-1 ? u : u + DOM; }
 function sinTildes(s){ return String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(); }
-function genUser(nombres, ap1){
+var PARTIC = ["de","del","la","las","los","y","san","santa","da","di","van","von"];
+function primerApellido(ap){
+  var w = sinTildes(ap).replace(/[^a-z\s]/g,"").trim().split(/\s+/).filter(Boolean), r = "";
+  for (var i=0;i<w.length;i++){ r += w[i]; if (PARTIC.indexOf(w[i])<0) break; }   /* "De la Cruz" -> delacruz */
+  return r;
+}
+function genUser(nombres, apellidos){
   var n = sinTildes(nombres).replace(/[^a-z\s]/g,"").trim().split(/\s+/)[0] || "";
-  var a = sinTildes(ap1).replace(/[^a-z]/g,"");
+  var a = primerApellido(apellidos);
   if (!n && !a) return "";
   return n.charAt(0) + a;
 }
@@ -799,7 +827,7 @@ $("btnSalir").onclick = function(){ window.NUBE.logout(); };
 /* ---------- Administración de usuarios ---------- */
 function errAuth(e){
   var c = (e && e.code) || "";
-  if (c==="auth/email-already-in-use") return "Ese usuario ya existe. Edita el campo Usuario (por ejemplo agrega otra letra).";
+  if (c==="auth/email-already-in-use") return "No se pudo generar un usuario único. Revisa el nombre y el apellido.";
   if (c==="auth/weak-password") return "La contraseña debe tener al menos 6 caracteres.";
   if (c==="auth/invalid-email") return "El usuario no es válido.";
   return "No se pudo crear el usuario.";
@@ -807,30 +835,40 @@ function errAuth(e){
 function enCursoDe(nombre){
   return S.units.filter(function(u){ var f=fase(u); return f!=="idle" && f!=="fin" && atiende(u)===nombre; });
 }
+var ICO_USR = '<svg class="u-ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4.2"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>';
 function pintarUsuarios(m){
   var ids = Object.keys(m).sort(function(a,b){ return String(m[a].nombre).localeCompare(String(m[b].nombre)); });
   $("admLista").innerHTML = ids.map(function(id){
     var x = m[id], yo_ = YO && YO.uid===id, ec = enCursoDe(x.nombre);
-    return '<tr><td><b>'+esc(x.nombre)+'</b></td><td>'+esc(String(x.email).replace(DOM,""))+'</td><td>'+(x.rol==="admin"?"Administrador":"Operador")+'</td><td>'+(x.activo?"Activo":'<span class="adm-off">Desactivado</span>')+'</td>'+
-      '<td class="at">'+(ec.length ? ec.map(function(u){ return esc(u.transporte)+' · ruta '+esc(u.ruta); }).join("<br>") : "—")+'</td><td>'+
-      (yo_ ? "—" : '<button class="link" data-uid="'+esc(id)+'" data-v="'+(x.activo?"0":"1")+'">'+(x.activo?"Desactivar":"Activar")+'</button>'+(String(x.email).indexOf(DOM)>-1 ? "" : ' · <button class="link" data-mail="'+esc(x.email)+'">Restablecer contraseña</button>')+' · <button class="link del" data-del="'+esc(id)+'">Eliminar</button>')+'</td></tr>';
-  }).join("") || '<tr><td colspan="6">Sin usuarios</td></tr>';
+    var user = String(x.email||"").replace(DOM,"");
+    var tags = '<span class="u-tag">'+(x.rol==="admin"?"Administrador":"Operador")+'</span>'
+      + (yo_ ? '<span class="u-tag">Tú</span>' : "")
+      + (x.activo ? "" : '<span class="u-tag off">Desactivado</span>')
+      + (ec.length ? '<span class="u-tag on">Atendiendo: '+ec.map(function(u){ return esc(u.transporte)+' · ruta '+esc(u.ruta); }).join(", ")+'</span>' : "");
+    var act = yo_ ? "" : '<div class="u-act"><button class="link" data-uid="'+esc(id)+'" data-v="'+(x.activo?"0":"1")+'">'+(x.activo?"Desactivar":"Activar")+'</button>'
+      + (String(x.email).indexOf(DOM)>-1 ? "" : '<button class="link" data-mail="'+esc(x.email)+'">Restablecer contraseña</button>')
+      + '<button class="link del" data-del="'+esc(id)+'">Eliminar</button></div>';
+    return '<div class="u-card"><div class="u-top">'+ICO_USR+'<span class="u-user">'+esc(user)+'</span></div>'
+      + '<p class="u-info">'+esc(x.nombre)+(x.dni ? ' · DNI: '+esc(x.dni) : "")+'</p>'
+      + '<div class="u-tags">'+tags+'</div>'+act+'</div>';
+  }).join("") || '<p class="u-vacio">Aún no hay usuarios.</p>';
 }
 function iniciarUsers(){
   if (!YO || YO.rol!=="admin" || offUsers || !window.NUBE) return;
   offUsers = window.NUBE.escucharUsuarios(function(sn){ ultUsers = sn.val()||{}; pintarUsuarios(ultUsers); if (!$("vistaEquipo").classList.contains("hidden")) renderEquipo(); }, function(){ toast("No se pudo leer la lista de usuarios"); });
 }
 function detenerUsers(){ if (offUsers){ offUsers(); offUsers = null; } }
-var userManual = false;
-function sugerirUser(){ if (!userManual) $("admMail").value = genUser($("admNom").value, $("admAp1").value); }
+function sugerirUser(){
+  var u = genUser($("admNom").value, $("admAp1").value), v = $("admVista");
+  v.textContent = u ? "Se creará como: " + u : ""; v.classList.toggle("hidden", !u);
+}
 $("admNom").addEventListener("input", sugerirUser);
 $("admAp1").addEventListener("input", sugerirUser);
-$("admMail").addEventListener("input", function(){ userManual = $("admMail").value.trim() !== ""; });
 $("admPass").addEventListener("input", function(){ this.value = this.value.replace(/\D/g,"").slice(0,8); });
 function existeUser(mail){ return Object.keys(ultUsers).some(function(id){ return String((ultUsers[id]||{}).email).toLowerCase()===mail; }); }
 function mostrarRes(usuario, clave, nombre){
   var r = $("admRes");
-  r.innerHTML = '<b>Usuario creado: '+esc(nombre)+'</b><div style="margin-top:6px">Usuario: <code>'+esc(usuario)+'</code> &nbsp; Clave: <code>'+esc(clave)+'</code> <button class="link" id="admCopiar" type="button" data-t="'+esc("Usuario: "+usuario+"  Clave: "+clave)+'">Copiar</button></div><small>La clave solo se muestra ahora, aquí, al administrador. Entrégala a la persona.</small>';
+  r.innerHTML = '<b>Usuario creado: '+esc(nombre)+'</b><div style="margin-top:6px">Usuario: <code>'+esc(usuario)+'</code> &nbsp; Clave: <code>'+esc(clave)+'</code> <button class="link" id="admCopiar" type="button" data-t="'+esc("Usuario: "+usuario+"  Clave: "+clave)+'">Copiar</button></div><small>Estos datos solo los ve el administrador. Entrégaselos a la persona.</small>';
   r.classList.remove("hidden");
 }
 $("admRes").addEventListener("click", function(e){
@@ -839,24 +877,24 @@ $("admRes").addEventListener("click", function(e){
   (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){ toast("Copiado"); }, function(){ toast("No se pudo copiar"); });
 });
 $("admCrear").onclick = function(){
-  var nom = $("admNom").value.trim().replace(/\s+/g," "), a1 = $("admAp1").value.trim().replace(/\s+/g," "), a2 = $("admAp2").value.trim().replace(/\s+/g," ");
-  var dni = $("admPass").value.trim(), r = $("admRol").value, base = $("admMail").value.trim().toLowerCase();
-  if (!nom || !a1 || !dni) return toast("Completa nombres, primer apellido y DNI");
+  var nom = $("admNom").value.trim().replace(/\s+/g," "), ap = $("admAp1").value.trim().replace(/\s+/g," ");
+  var dni = $("admPass").value.trim(), r = $("admRol").value, base = genUser(nom, ap);
+  if (!nom || !ap || !dni) return toast("Completa nombre, apellido y DNI");
   if (!/^\d{8}$/.test(dni)) return toast("El DNI debe tener 8 dígitos");
-  if (!base || !/^[a-z0-9._-]+$/.test(base)) return toast("El usuario solo puede tener letras y números");
-  var nombre = [nom,a1,a2].filter(Boolean).join(" "), auto = !userManual;
+  if (!base || !/^[a-z0-9]+$/.test(base)) return toast("Usa solo letras en el nombre y el apellido");
+  var nombre = nom + " " + ap;
   $("admCrear").disabled = true;
   function intentar(n){
     var cand = n===1 ? base : base+n, mail = aMail(cand);
-    if (existeUser(mail)) return (auto && n<20) ? intentar(n+1) : Promise.reject({code:"auth/email-already-in-use"});
+    if (existeUser(mail)) return n<20 ? intentar(n+1) : Promise.reject({code:"auth/email-already-in-use"});
     return window.NUBE.crear(nombre, mail, dni, r).then(function(){ return cand; }, function(e){
-      if (e && e.code==="auth/email-already-in-use" && auto && n<20) return intentar(n+1);
+      if (e && e.code==="auth/email-already-in-use" && n<20) return intentar(n+1);
       throw e;
     });
   }
   intentar(1).then(function(cand){
     mostrarRes(cand, dni, nombre);
-    ["admNom","admAp1","admAp2","admMail","admPass"].forEach(function(id){ $(id).value = ""; }); userManual = false;
+    ["admNom","admAp1","admPass"].forEach(function(id){ $(id).value = ""; }); sugerirUser();
     toast("Usuario creado");
   }).catch(function(e){ console.error(e); toast(errAuth(e)); }).then(function(){ $("admCrear").disabled = false; });
 };
