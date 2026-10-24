@@ -574,6 +574,19 @@ tbody tr.sin-datos:hover{background:transparent!important}
 @keyframes spPuntos{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
 @media (prefers-reduced-motion:reduce){.sp-box,.sp-logo,.sp-ring,.sp-bar i,.sp-dots::after{animation:none}.sp-ring{display:none}.sp-bar i{width:100%}}
 @media print{#splash{display:none!important}}
+
+/* ---- Carga de Excel: avisos y pantalla de lectura ---- */
+#cargaEstado{margin:0 0 14px;font-weight:600}
+#cargaEstado.est-err{background:#fdecec;border-color:#f0b4b4;color:#a12622}
+#cargaEstado.est-ok{background:var(--ok-bg);border-color:#b6dcc3;color:var(--ok)}
+#cargando{position:fixed;inset:0;z-index:95;background:rgba(13,36,64,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.cg-card{display:flex;align-items:center;gap:16px;background:var(--card);color:var(--ink);border-radius:16px;padding:20px 24px;box-shadow:0 30px 60px -20px rgba(0,0,0,.6);max-width:min(440px,100%)}
+.cg-spin{width:34px;height:34px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--primary);animation:spGira .9s linear infinite;flex:none}
+.cg-card b{display:block;font-size:15px;overflow-wrap:anywhere}
+.cg-card small{color:var(--muted);font-size:12.5px}
+@media (prefers-reduced-motion:reduce){.cg-spin{animation-duration:2.4s}}
+@media print{#cargando{display:none!important}}
+[data-theme="dark"] #cargaEstado.est-err{background:#3a1c1f;border-color:#6b2c31;color:var(--danger)}
 </style>
 </head>
 <body>
@@ -606,7 +619,7 @@ tbody tr.sin-datos:hover{background:transparent!important}
     <button class="tab" role="tab" id="tabResumen" aria-selected="false">Resumen</button>
     <button class="tab" role="tab" id="tabEquipo" aria-selected="false">Equipo</button>
   </div>
-  <input type="file" id="archivo" accept=".xlsx,.xlsm" class="hidden">
+  <input type="file" id="archivo" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12" class="hidden">
 </header>
 
 <main>
@@ -679,6 +692,7 @@ tbody tr.sin-datos:hover{background:transparent!important}
 
   <section id="vistaCarga" class="hidden">
     <div class="sec-h"><div><h2>Cargar Excel</h2><p>Sube el consolidado de pre-carga. Se conservan los tiempos de las unidades que coincidan.</p></div></div>
+    <div class="aviso hidden" id="cargaEstado" role="status" aria-live="polite"></div>
     <div id="dropCarga" class="empty">
       <div class="empty-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 17v-6M9 14l3-3 3 3"/></svg></div>
       <h2>Arrastra aquí el archivo Excel (.xlsx)</h2>
@@ -722,6 +736,16 @@ tbody tr.sin-datos:hover{background:transparent!important}
     <button class="link" type="button" id="lgOlvide" style="margin-top:10px">Olvidé mi contraseña</button>
     <div class="lg-msg" id="lgMsg" role="alert"></div>
     <button class="btn alt hidden" type="button" id="lgLocal">Continuar sin conexión (solo este equipo)</button>
+  </div>
+</div>
+<div id="cargando" class="hidden" role="status" aria-live="polite">
+  <div class="cg-card"><div class="cg-spin"></div><div><b id="cgTit">Leyendo Excel…</b><small>Puede tardar unos segundos si el archivo es grande.</small></div></div>
+</div>
+<div class="modal hidden" id="modalConf" role="dialog" aria-modal="true" aria-labelledby="mcT">
+  <div class="modal-card" style="width:min(460px,100%)">
+    <h2 id="mcT"></h2>
+    <p class="modal-sub" id="mcTxt"></p>
+    <div class="modal-act"><span class="grow"></span><button class="btn alt" id="mcNo" type="button">Cancelar</button><button class="btn btn-start" id="mcOk" type="button">Continuar</button></div>
   </div>
 </div>
 <div id="menuWrap" class="hidden">
@@ -1059,7 +1083,7 @@ function p2(n){ return (n<10?"0":"")+n; }
 function norm(s){ return String(s||"").trim().toUpperCase(); }
 function hora(ms){ if(!ms) return "—"; var d=new Date(ms); return p2(d.getHours())+":"+p2(d.getMinutes())+":"+p2(d.getSeconds()); }
 function dur(ms){ if (ms==null || isNaN(ms)) return "—"; var s=Math.max(0,Math.floor(ms/1000)); return p2(Math.floor(s/3600))+":"+p2(Math.floor(s%3600/60))+":"+p2(s%60); }
-function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.remove("hidden"); clearTimeout(toast._t); toast._t=setTimeout(function(){t.classList.add("hidden");},2600); }
+function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.remove("hidden"); clearTimeout(toast._t); toast._t=setTimeout(function(){t.classList.add("hidden");},Math.min(9000,Math.max(2600,String(msg).length*60))); }
 function fase(u){ var t=u.t; if(!t.ini) return "idle"; if(!t.finConteo) return "conteo"; if(!t.iniRampa) return "espera"; if(!t.fin) return "rampa"; return "fin"; }
 var ETQ = { idle:["Pendiente","b-idle"], conteo:["Conteo físico","b-conteo"], espera:["Listo para rampa","b-conteo"], rampa:["En rampa","b-rampa"], fin:["Finalizada","b-ok"] };
 
@@ -1092,41 +1116,97 @@ function celda(r,i){ var v=r[i]; return v==null?"":String(v).trim(); }
 /* Lector de .xlsx propio (usa JSZip incrustado; no necesita internet) */
 function colIdx(ref){ var m=/^([A-Z]+)/.exec(ref), n=0; for(var i=0;i<m[1].length;i++) n=n*26+m[1].charCodeAt(i)-64; return n-1; }
 function xmlDoc(t){ return new DOMParser().parseFromString(t,"application/xml"); }
-function parseHoja(x,strings){
-  var d=xmlDoc(x), rows=[], rs=d.getElementsByTagName("row");
-  for (var i=0;i<rs.length;i++){
-    var re=rs[i], ri=parseInt(re.getAttribute("r"),10); ri=isNaN(ri)?rows.length:ri-1;
-    var arr=[], cs=re.getElementsByTagName("c");
-    for (var j=0;j<cs.length;j++){
-      var c=cs[j], ref=c.getAttribute("r"), ci=ref?colIdx(ref):j, t=c.getAttribute("t"), v="";
-      var ve=c.getElementsByTagName("v")[0];
-      if (t==="inlineStr"){ var ie=c.getElementsByTagName("is")[0]; v=ie?ie.textContent:""; }
-      else if (ve){ v=ve.textContent; if (t==="s") v=strings[parseInt(v,10)]||""; }
-      arr[ci]=v;
-    }
-    rows[ri]=arr;
+/* Lector rápido: recorre el XML como texto y solo toma las columnas que se usan (AJ–AS y guía/sku).
+   El Excel de operación puede tener decenas de miles de filas; armar el documento completo tardaba más de 20 s. */
+var COLS_USO = {}; Object.keys(COL).forEach(function(k){ COLS_USO[COL[k]] = true; });
+function decXml(s){
+  if (s.indexOf("&") < 0) return s;
+  return s.replace(/&(lt|gt|amp|quot|apos|#\d+|#x[0-9a-fA-F]+);/g, function(m,e){
+    if (e==="lt") return "<"; if (e==="gt") return ">"; if (e==="amp") return "&"; if (e==="quot") return '"'; if (e==="apos") return "'";
+    try { return String.fromCodePoint(e.charAt(1)==="x" ? parseInt(e.slice(2),16) : parseInt(e.slice(1),10)); } catch(x){ return m; }
+  });
+}
+function textosT(body){
+  var t = "", q = 0;
+  while (true){
+    var a = body.indexOf("<t", q); if (a < 0) break;
+    var c = body.charCodeAt(a+2); if (c!==62 && c!==32 && c!==47){ q = a+2; continue; }
+    var b = body.indexOf(">", a); if (b < 0) break;
+    if (body.charCodeAt(b-1) === 47){ q = b+1; continue; }
+    var d = body.indexOf("</t>", b); if (d < 0) break;
+    t += body.substring(b+1, d); q = d+4;
   }
-  for (var k=0;k<rows.length;k++) if(!rows[k]) rows[k]=[];
+  return decXml(t);
+}
+function parseStrings(x){
+  var out = [], pos = 0;
+  while (true){
+    var s = x.indexOf("<si", pos); if (s < 0) break;
+    var c = x.charCodeAt(s+3); if (c!==62 && c!==32 && c!==47){ pos = s+3; continue; }
+    var te = x.indexOf(">", s); if (te < 0) break;
+    if (x.charCodeAt(te-1) === 47){ out.push(""); pos = te+1; continue; }
+    var e = x.indexOf("</si>", te); if (e < 0) break;
+    var body = x.substring(te+1, e);
+    if (body.indexOf("<rPh") >= 0) body = body.replace(/<rPh[\s\S]*?<\/rPh>/g, "");
+    out.push(textosT(body)); pos = e+5;
+  }
+  return out;
+}
+function parseHoja(x, strings){
+  var rows = [], pos = 0;
+  while (true){
+    var rs = x.indexOf("<row", pos); if (rs < 0) break;
+    var c4 = x.charCodeAt(rs+4); if (c4!==32 && c4!==62 && c4!==47){ pos = rs+4; continue; }
+    var rt = x.indexOf(">", rs); if (rt < 0) break;
+    var m = /\sr="(\d+)"/.exec(x.substring(rs, rt)), ri = m ? parseInt(m[1],10)-1 : rows.length, arr = [];
+    rows[ri] = arr;
+    if (x.charCodeAt(rt-1) === 47){ pos = rt+1; continue; }
+    var re = x.indexOf("</row>", rt); if (re < 0) re = x.length;
+    var p = rt+1, j = 0;
+    while (true){
+      var cs = x.indexOf("<c", p); if (cs < 0 || cs >= re) break;
+      var c2 = x.charCodeAt(cs+2); if (c2!==32 && c2!==62 && c2!==47){ p = cs+2; continue; }
+      var ct = x.indexOf(">", cs); if (ct < 0) break;
+      var vacio = x.charCodeAt(ct-1) === 47, cend = ct+1;
+      if (!vacio){ cend = x.indexOf("</c>", ct); if (cend < 0 || cend > re) cend = re; }
+      var ci = j, q = x.indexOf(' r="', cs);
+      if (q >= 0 && q < ct){ q += 4; var n = 0, ch; while ((ch = x.charCodeAt(q)) >= 65 && ch <= 90){ n = n*26 + ch - 64; q++; } ci = n-1; }
+      j = ci + 1;
+      if (!vacio && COLS_USO[ci]){
+        var tm = /\st="(\w+)"/.exec(x.substring(cs, ct)), tt = tm ? tm[1] : "", body = x.substring(ct+1, cend), v = "";
+        if (tt === "inlineStr") v = textosT(body);
+        else {
+          var a = body.indexOf("<v"); if (a >= 0){ var b = body.indexOf(">", a)+1, d = body.indexOf("</v>", b); v = d < 0 ? "" : body.substring(b, d); v = tt==="s" ? (strings[parseInt(v,10)] || "") : decXml(v); }
+        }
+        arr[ci] = v;
+      }
+      p = vacio ? ct+1 : cend+4;
+    }
+    pos = re+6;
+  }
+  for (var k=0;k<rows.length;k++) if (!rows[k]) rows[k] = [];
   return rows;
 }
 function leerLibro(buf){
   return JSZip.loadAsync(buf).then(function(zip){
-    function txt(p){ var f=zip.file(p); return f ? f.async("string") : Promise.resolve(""); }
+    function txt(p){
+      var f = zip.file(p); if (!f) return Promise.resolve("");
+      if (window.TextDecoder) return f.async("uint8array").then(function(u){ return new TextDecoder("utf-8").decode(u); });
+      return f.async("string");
+    }
     return Promise.all([txt("xl/workbook.xml"),txt("xl/_rels/workbook.xml.rels"),txt("xl/sharedStrings.xml")]).then(function(r){
-      var wb=xmlDoc(r[0]), rels=xmlDoc(r[1]), rel={}, strings=[], hojas=[];
-      Array.prototype.forEach.call(rels.getElementsByTagName("Relationship"),function(e){ rel[e.getAttribute("Id")]=e.getAttribute("Target"); });
-      if (r[2]) Array.prototype.forEach.call(xmlDoc(r[2]).getElementsByTagName("si"),function(si){
-        var t=""; Array.prototype.forEach.call(si.getElementsByTagName("t"),function(x){ t+=x.textContent; }); strings.push(t);
-      });
+      if (!r[0]) throw new Error("no es un .xlsx válido (falta xl/workbook.xml)");
+      var wb = xmlDoc(r[0]), rels = xmlDoc(r[1]), rel = {}, hojas = [], strings = r[2] ? parseStrings(r[2]) : [];
+      Array.prototype.forEach.call(rels.getElementsByTagName("Relationship"),function(e){ rel[e.getAttribute("Id")] = e.getAttribute("Target"); });
       Array.prototype.forEach.call(wb.getElementsByTagName("sheet"),function(e){
-        var rid=e.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id")||e.getAttribute("r:id");
-        var tg=(rel[rid]||"").replace(/^\//,""); if (tg.indexOf("xl/")!==0) tg="xl/"+tg;
+        var rid = e.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id") || e.getAttribute("r:id");
+        var tg = (rel[rid]||"").replace(/^\//,""); if (tg.indexOf("xl/") !== 0) tg = "xl/" + tg;
         hojas.push({name:e.getAttribute("name"),path:tg});
       });
       return {
-        names:hojas.map(function(h){return h.name;}),
-        filas:function(name){
-          var h=hojas.filter(function(x){return x.name===name;})[0];
+        names: hojas.map(function(h){return h.name;}),
+        filas: function(name){
+          var h = hojas.filter(function(x){return x.name===name;})[0]; if (!h) return Promise.resolve([]);
           return txt(h.path).then(function(x){ return parseHoja(x,strings); });
         }
       };
@@ -1183,17 +1263,22 @@ function procesarLibro(lib, nombre){
   var cand=[];
   if (lib.names.indexOf("CONSOLIDADO TOTAL")>=0) cand.push("CONSOLIDADO TOTAL");
   lib.names.forEach(function(n){ if (cand.indexOf(n)<0) cand.push(n); });
+  var vistos = [];
   function probar(i){
     if (i>=cand.length) return Promise.resolve(null);
     return lib.filas(cand[i]).then(function(filas){
-      for (var k=0;k<Math.min(filas.length,8);k++){
-        if (/vehiculo/i.test(String(filas[k][COL.transporte]||""))) return {filas:filas,ini:k+1};
+      var visto = "";
+      for (var k=0;k<Math.min(filas.length,60);k++){
+        var v = String(filas[k][COL.transporte]||"").trim();
+        if (/vehiculo/.test(sinTildes(v))) return {filas:filas,ini:k+1};
+        if (!visto && v) visto = v;
       }
+      vistos.push(cand[i] + (visto ? " (en AJ vi «" + visto.slice(0,24) + "»)" : " (columna AJ vacía)"));
       return probar(i+1);
     });
   }
   return probar(0).then(function(res){
-    if (!res){ toast("No encontré la hoja con las columnas AJ–AS"); return; }
+    if (!res){ falloCarga('No encontré el encabezado "Vehiculo" en la columna AJ. Hojas revisadas: ' + vistos.join("; ") + "."); return; }
     var filas=res.filas, ini=res.ini;
   var mapa = {}, orden = [];
   for (var n=ini;n<filas.length;n++){
@@ -1206,19 +1291,40 @@ function procesarLibro(lib, nombre){
     if (gu){ var ex=null; for(var q=0;q<u.guias.length;q++){ if(u.guias[q].g===gu){ ex=u.guias[q]; break; } } if(!ex) u.guias.push({g:gu,s:sk}); else if(sk && ex.s.indexOf(sk)<0) ex.s = ex.s ? ex.s+" / "+sk : sk; }
     if (!u.placa && pl) u.placa = pl;
   }
-  if (!orden.length){ toast("El archivo no tiene filas con transporte en la columna AJ"); return; }
+  if (!orden.length){ falloCarga("El archivo tiene el encabezado pero ninguna fila con transporte en la columna AJ."); return; }
   var previas = {}; S.units.forEach(function(x){ previas[x.id]=x; });
   orden.forEach(function(u){ var p=previas[u.id]; if (p){ u.t=p.t; u.q=p.q||{}; if (p.qa) u.qa=p.qa; u.obs=p.obs||""; if (p.placa) u.placa=p.placa; } });
-  S.units = orden; aplicarPers(); S.fuente = nombre; S.open = (S.open||[]).filter(function(id){ return !!mapa[id]; }); guardar(); render(); toast(orden.length+" unidades cargadas"); ir("atencion");
+  S.units = orden; aplicarPers(); S.fuente = nombre; S.open = (S.open||[]).filter(function(id){ return !!mapa[id]; }); guardar(); render(); cargaMsg(orden.length + " unidades cargadas desde " + nombre, "ok"); toast(orden.length+" unidades cargadas"); ir("atencion");
   });
+}
+function mostrarCargando(t){ $("cgTit").textContent = t; $("cargando").classList.remove("hidden"); }
+function ocultarCargando(){ $("cargando").classList.add("hidden"); }
+function cargaMsg(txt, tipo){
+  var e = $("cargaEstado");
+  if (!txt){ e.textContent = ""; e.className = "aviso hidden"; return; }
+  e.textContent = txt; e.className = "aviso " + (tipo==="error" ? "est-err" : "est-ok");
+}
+function falloCarga(msg){ cargaMsg(msg, "error"); toast(msg); }
+function msgError(err){
+  var m = String(err && err.message || err || "");
+  if (/central directory|zip|corrupt|signature|end of/i.test(m)) return "El archivo no parece un .xlsx válido. Ábrelo en Excel y guárdalo de nuevo como .xlsx.";
+  return "No se pudo leer el archivo" + (m ? " (" + m.slice(0,90) + ")" : "") + ". Usa un Excel .xlsx.";
 }
 function leerArchivo(file){
   if (!file) return;
-  if (typeof JSZip === "undefined"){ toast("No se pudo iniciar el lector de Excel."); return; }
+  if (typeof JSZip === "undefined"){ falloCarga("No se pudo iniciar el lector de Excel."); return; }
+  cargaMsg("");
+  mostrarCargando("Leyendo " + file.name + "…");
   var fr = new FileReader();
+  fr.onerror = function(){ ocultarCargando(); falloCarga("El navegador no pudo abrir el archivo. Si está en la nube (Drive, OneDrive), descárgalo primero."); };
   fr.onload = function(e){
-    leerLibro(e.target.result).then(function(lib){ return procesarLibro(lib,file.name); })
-      .catch(function(){ toast("No se pudo leer el archivo. Usa un Excel .xlsx"); });
+    var buf = e.target.result, b = new Uint8Array(buf, 0, Math.min(4, buf.byteLength));
+    if (b[0]===0xD0 && b[1]===0xCF){ ocultarCargando(); falloCarga("Ese archivo es un Excel antiguo (.xls). Ábrelo en Excel y guárdalo como .xlsx."); return; }
+    setTimeout(function(){   /* deja pintar la pantalla de lectura antes del trabajo pesado */
+      leerLibro(buf).then(function(lib){ return procesarLibro(lib, file.name); })
+        .catch(function(err){ console.error(err); falloCarga(msgError(err)); })
+        .then(ocultarCargando);
+    }, 50);
   };
   fr.readAsArrayBuffer(file);
 }
@@ -1552,16 +1658,31 @@ $("btnMenu").onclick = abrirMenu;
 $("menuVelo").onclick = cerrarMenu;
 $("menuNav").addEventListener("click", function(e){ var b = e.target.closest("button[data-v]"); if (b) ir(b.getAttribute("data-v")); });
 
-function abrirSelector(){ $("archivo").click(); }
+function abrirSelector(){ $("archivo").value = ""; $("archivo").click(); }
+/* Confirmación propia (el cuadro nativo del navegador se puede bloquear y cancelaba la carga en silencio) */
+function confirmarApp(titulo, texto, okTxt){
+  return new Promise(function(res){
+    $("mcT").textContent = titulo; $("mcTxt").textContent = texto; $("mcOk").textContent = okTxt || "Continuar";
+    var m = $("modalConf"); m.classList.remove("hidden");
+    function kd(e){ if (e.key==="Escape") fin(false); }
+    function fin(v){ m.classList.add("hidden"); $("mcOk").onclick = $("mcNo").onclick = null; document.removeEventListener("keydown", kd); res(v); }
+    document.addEventListener("keydown", kd);
+    $("mcOk").onclick = function(){ fin(true); }; $("mcNo").onclick = function(){ fin(false); };
+    setTimeout(function(){ $("mcOk").focus(); }, 30);
+  });
+}
 function pedirArchivo(f){
-  if (!f) return;
-  if (!/\.xls[xm]$/i.test(f.name)){ toast("Usa un archivo Excel (.xlsx)"); return; }
-  if (S.units.some(function(u){return u.t.ini;}) && !confirm("Ya hay atenciones registradas. Se conservarán los tiempos de las unidades que coincidan. ¿Continuar?")) return;
-  leerArchivo(f);
+  if (!f){ falloCarga("No recibí ningún archivo. Arrastra el Excel desde tu carpeta o usa «Seleccionar Excel»."); return; }
+  var n = f.name || "";
+  if (/\.xls$/i.test(n)){ falloCarga("Ese archivo es .xls (formato antiguo). Ábrelo en Excel y guárdalo como .xlsx."); return; }
+  if (n && !/\.xls[xm]$/i.test(n)){ falloCarga("Usa un archivo Excel .xlsx. El que elegiste es «" + n + "»."); return; }
+  if (!S.units.some(function(u){ return u.t.ini; })){ leerArchivo(f); return; }
+  confirmarApp("Ya hay atenciones registradas", "Se conservarán los tiempos de las unidades que también estén en el Excel nuevo. Las que no estén en el archivo nuevo se quitarán.", "Cargar Excel")
+    .then(function(ok){ if (ok) leerArchivo(f); });
 }
 $("btnCargar").onclick = abrirSelector;
 $("btnIrCarga").onclick = function(){ ir("carga"); };
-$("archivo").addEventListener("change",function(e){ pedirArchivo(e.target.files[0]); e.target.value=""; });
+$("archivo").addEventListener("change", function(e){ if (e.target.files && e.target.files[0]) pedirArchivo(e.target.files[0]); });
 
 /* Arrastrar y soltar: toda la vista "Cargar Excel" es zona de soltado */
 var vz=$("vistaCarga"), dz=$("dropCarga");
